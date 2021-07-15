@@ -473,7 +473,9 @@ def init_download(type, id):
         poster_tall = json.dumps(r.json().get("images").get("poster_tall")).replace("[", "").replace("]", "")
         poster = json.loads("[{}]".format(poster_tall))
 
-        dl_path = "{}\\S{} - {}".format(check_characters(series_title), season_number, check_characters(season_title))
+        series_title = check_characters(series_title)
+        dirname = "S{} - {}".format(season_number, check_characters(season_title))
+        dl_path = os.path.join(series_title, dirname)
         dl_title = "[S{}.Ep{}] {} - {}".format(season_number, episode, check_characters(series_title),
                                                check_characters(title))
         dl_cover = poster[len(poster) - 1].get("source")
@@ -664,20 +666,24 @@ def download_cover():
 
     print("[debug] Cover download")
     response = requests.get(dl_cover)
-    file = open("{}\\{}\\cover.jpg".format(dl_root, dl_path), "wb")
+    filename = os.path.join(dl_root, dl_path, "cover.jpg")
+    file = open(filename, "wb")
     file.write(response.content)
     file.close()
 
 
 def create_folder():
-    if not os.path.exists("{}\\{}".format(dl_root, dl_path)):
-        os.makedirs("{}\\{}".format(dl_root, dl_path))
+    path = os.path.join(dl_root, dl_path)
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 
 def download_video():
+    filename = "{}.%(ext)s".format(dl_tile)
+    path = os.path.join(dl_root, dl_path, filename)
     print("[debug] Video download")
     try:
-        os.system('youtube-dl -o "{}\\{}\\{}.%(ext)s" "{}"'.format(dl_root, dl_path, dl_title, dl_url))
+        os.system('youtube-dl -o "{}\\{}\\{}.%(ext)s" "{}"'.format(path, dl_url))
     except:
         print("ERROR: Download error")
         sys.exit(0)
