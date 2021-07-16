@@ -7,6 +7,7 @@ import math
 import random
 import uuid
 
+display = False
 
 def main():
     global display
@@ -28,7 +29,7 @@ def main():
 
     limit = 100
     display = True
-    dl_root = "Downloads"
+    dl_root = "anime"
     if args.login:
         login(args.login, args.us_unblocker)
     elif args.session_id:
@@ -406,6 +407,7 @@ def get_episodes(args_episodes):
     print("{0:<15} {1:<10} {2:<10} {3:<40}".format("ID", "Episode", "Premium only", "Title"))
     for i in range(len(id)):
         print("{0:<15} {1:<10} {2:<10} {3:<40}".format(id[i], episode[i], get_boolean(is_premium_only[i]), title[i]))
+    return zip(id, episode, is_premium_only, title)
 
 
 def get_boolean(boolean):
@@ -438,8 +440,9 @@ def get_formats(arg_formats):
 
     init_download(type, id)
     audio_locale = r.json().get("audio_locale")
-    formats_subtitles(get_items(r.json().get("subtitles")))
-    formats_videos(get_items(r.json().get("streams").get("adaptive_hls")))
+    sub_info = formats_subtitles(get_items(r.json().get("subtitles")))
+    vid_info =formats_videos(get_items(r.json().get("streams").get("adaptive_hls")))
+    return sub_info, vid_info
 
 
 def init_download(type, id):
@@ -517,6 +520,7 @@ def formats_subtitles(items):
         for i in range(len(locale)):
             print("{0:<40} {1:<20} {2:<20}".format(subtitles_format_code[i], subtitles_extension[i],
                                                    get_locale_title(locale[i])))
+    return zip(subtitles_format_code, locale, subtitles_url, subtitles_extension)
 
 
 def formats_videos(items):
@@ -561,6 +565,7 @@ def formats_videos(items):
         print("{0:<40} {1:<20} {2:<20} {3:<40}".format("Format code", "Extension", "Resolution", "Note"))
         for i in range(len(videos_format_code)):
             print("{0:<40} {1:<20} {2:<20} {3:<40}".format(videos_format_code[i], "mp4", resolutions[i], note[i]))
+    return zip(videos_format_code, resolutions, note)
 
 
 def get_locale_title(locale):
@@ -657,6 +662,7 @@ def download(args_download, args_format):
             download_subtitles()
     else:
         print("ERROR: Data loading error")
+        print(dl_url, dl_extension)
         sys.exit(0)
 
 
@@ -679,11 +685,17 @@ def create_folder():
 
 
 def download_video():
-    filename = "{}.%(ext)s".format(dl_tile)
+    filename = "{}.%(ext)s".format(dl_title)
+    dest_filename = "{}.mp4".format(dl_title)
     path = os.path.join(dl_root, dl_path, filename)
+    dest_path = os.path.join(dl_root, dl_path, dest_filename)
     print("[debug] Video download")
+    print(dest_path)
+    if os.path.isfile(dest_path):
+        print("Found existing download, skipping")
+        return
     try:
-        os.system('youtube-dl -o "{}\\{}\\{}.%(ext)s" "{}"'.format(path, dl_url))
+        os.system('youtube-dl -o "{}" "{}"'.format(path, dl_url))
     except:
         print("ERROR: Download error")
         sys.exit(0)
@@ -691,16 +703,18 @@ def download_video():
 
 def download_subtitles():
     output = "{} [{}]".format(dl_title, get_locale_title(dl_format.split("subtitles-")[1].strip()))
+    filename = "{}.{}".format(output, dl_extension)
+    path = os.path.join(dl_root, dl_path, filename)
+    
 
-    if os.path.isfile("{}/{}/{}.{}".format(dl_root, dl_path, output, dl_extension)):
-        os.remove("{}/{}/{}.{}".format(dl_root, dl_path, output, dl_extension))
+    if os.path.isfile(path):
+        os.remove(path)
 
     print("[debug] Subtitles download")
     response = requests.get(dl_url)
-    file = open("{}/{}/{}.{}".format(dl_root, dl_path, output, dl_extension), "wb")
+    file = open(path, "wb")
     file.write(response.content)
     file.close()
-    sys.exit(0)
 
 
 if __name__ == '__main__':
